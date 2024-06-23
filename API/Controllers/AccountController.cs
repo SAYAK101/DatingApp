@@ -14,6 +14,10 @@ public class AccountController(DataContext context, ITokenService tokenService) 
     [HttpPost("register")]
     public async Task<ActionResult<UserResponseDTO>> Register(RegisterDTO userDto)
     {
+        if (userDto.username == null || userDto.username == "" || userDto.username == " ")
+        {
+            return BadRequest("Username is Empty.");
+        }
         var userExists = await UserExists(userDto.username);
         if (userExists)
         {
@@ -31,14 +35,15 @@ public class AccountController(DataContext context, ITokenService tokenService) 
         context.Users.Add(user);
         await context.SaveChangesAsync();
 
-        return new UserResponseDTO {
+        return Ok(new UserResponseDTO
+        {
             Username = user.UserName,
             Token = tokenService.CreateToken(user)
-        };
+        });
     }
 
     [HttpPost("login")]
-    public async Task<ActionResult<AppUser>> Login(LoginDTO login)
+    public async Task<ActionResult<UserResponseDTO>> Login(LoginDTO login)
     {
         var user = await context.Users.FirstOrDefaultAsync(x => x.UserName == login.Username.ToLower());
         if (user == null)
@@ -55,14 +60,18 @@ public class AccountController(DataContext context, ITokenService tokenService) 
             if (computerHash[i] != user.PasswordHash[i]) return Unauthorized("Password Incorrect.");
         }
 
-        return Ok(user);
+        return Ok(new UserResponseDTO
+        {
+            Username = user.UserName,
+            Token = tokenService.CreateToken(user)
+        });
 
     }
 
     [HttpPost("update")]
     public async Task<ActionResult<AppUser>> Update(UpdateLoginDTO login)
     {
-        var user = await context.Users.FirstOrDefaultAsync(x => x.UserName == login.Username.ToLower());
+        var user = await context.Users.FirstOrDefaultAsync(x => x.UserName == login.Username);
         if (user == null)
         {
             return Unauthorized("User Name not exists.");
@@ -78,9 +87,9 @@ public class AccountController(DataContext context, ITokenService tokenService) 
         }
 
         using var hmacUpdate = new HMACSHA512();
-            user.UserName = login.UpdateUsername;
-            user.PasswordSalt = hmacUpdate.Key;
-            user.PasswordHash = hmacUpdate.ComputeHash(Encoding.UTF8.GetBytes(login.UpdatePassword));
+        user.UserName = login.UpdateUsername.ToLower();
+        user.PasswordSalt = hmacUpdate.Key;
+        user.PasswordHash = hmacUpdate.ComputeHash(Encoding.UTF8.GetBytes(login.UpdatePassword));
 
         await context.SaveChangesAsync();
         return Ok(user);
@@ -89,6 +98,6 @@ public class AccountController(DataContext context, ITokenService tokenService) 
 
     private async Task<bool> UserExists(string username)
     {
-        return await context.Users.AnyAsync(x => string.IsNullOrWhiteSpace(username) && x.UserName.ToLower() == username.ToLower());
+        return await context.Users.AnyAsync(x => !string.IsNullOrWhiteSpace(username) && !string.IsNullOrEmpty(username) && x.UserName.ToLower() == username.ToLower());
     }
 }
