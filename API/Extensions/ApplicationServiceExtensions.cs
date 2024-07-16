@@ -12,7 +12,9 @@ public static class ApplicationServiceExtensions
         services.AddControllers();
         services.AddDbContext<DataContext>(opt => opt.UseSqlite(configuration.GetConnectionString("DefaultConnection")));
         services.AddCors();
+        services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
         services.AddScoped<ITokenService, TokenService>();
+        services.AddScoped<IUserRepository, UserRepository>();
         return services;
     }
 }

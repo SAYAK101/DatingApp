@@ -18,34 +18,37 @@ public class AccountController(DataContext context, ITokenService tokenService) 
         {
             return BadRequest("Username is Empty.");
         }
+
         var userExists = await UserExists(userDto.username);
         if (userExists)
         {
             return BadRequest("Username is taken.");
         }
+        return Ok();
+        // using var hmac = new HMACSHA512();
+        // var user = new AppUser
+        // {
+        //     UserName = userDto.username.ToLower(),
+        //     PasswordHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(userDto.password)),
+        //     PasswordSalt = hmac.Key
+        // };
 
-        using var hmac = new HMACSHA512();
-        var user = new AppUser
-        {
-            UserName = userDto.username.ToLower(),
-            PasswordHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(userDto.password)),
-            PasswordSalt = hmac.Key
-        };
+        // context.Users.Add(user);
+        // await context.SaveChangesAsync();
 
-        context.Users.Add(user);
-        await context.SaveChangesAsync();
-
-        return Ok(new UserResponseDTO
-        {
-            Username = user.UserName,
-            Token = tokenService.CreateToken(user)
-        });
+        // return Ok(new UserResponseDTO
+        // {
+        //     Username = user.UserName,
+        //     Token = tokenService.CreateToken(user)
+        // });
     }
 
     [HttpPost("login")]
     public async Task<ActionResult<UserResponseDTO>> Login(LoginDTO login)
     {
-        var user = await context.Users.FirstOrDefaultAsync(x => x.UserName == login.Username.ToLower());
+        var user = await context.Users.FirstOrDefaultAsync(x =>
+            x.UserName == login.Username.ToLower()
+        );
         if (user == null)
         {
             return Unauthorized("User Name not exists.");
@@ -57,15 +60,13 @@ public class AccountController(DataContext context, ITokenService tokenService) 
 
         for (int i = 0; i < computerHash.Length; i++)
         {
-            if (computerHash[i] != user.PasswordHash[i]) return Unauthorized("Password Incorrect.");
+            if (computerHash[i] != user.PasswordHash[i])
+                return Unauthorized("Password Incorrect.");
         }
 
-        return Ok(new UserResponseDTO
-        {
-            Username = user.UserName,
-            Token = tokenService.CreateToken(user)
-        });
-
+        return Ok(
+            new UserResponseDTO { Username = user.UserName, Token = tokenService.CreateToken(user) }
+        );
     }
 
     [HttpPost("update")]
@@ -83,7 +84,8 @@ public class AccountController(DataContext context, ITokenService tokenService) 
 
         for (int i = 0; i < computerHash.Length; i++)
         {
-            if (computerHash[i] != user.PasswordHash[i]) return Unauthorized("Password Incorrect.");
+            if (computerHash[i] != user.PasswordHash[i])
+                return Unauthorized("Password Incorrect.");
         }
 
         using var hmacUpdate = new HMACSHA512();
@@ -93,11 +95,14 @@ public class AccountController(DataContext context, ITokenService tokenService) 
 
         await context.SaveChangesAsync();
         return Ok(user);
-
     }
 
     private async Task<bool> UserExists(string username)
     {
-        return await context.Users.AnyAsync(x => !string.IsNullOrWhiteSpace(username) && !string.IsNullOrEmpty(username) && x.UserName.ToLower() == username.ToLower());
+        return await context.Users.AnyAsync(x =>
+            !string.IsNullOrWhiteSpace(username)
+            && !string.IsNullOrEmpty(username)
+            && x.UserName.ToLower() == username.ToLower()
+        );
     }
 }
