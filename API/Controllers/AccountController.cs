@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace API.Controllers;
 
-public class AccountController(DataContext context, ITokenService tokenService) : BaseApiController
+public class AccountController(IUserRepository userRepository, ITokenService tokenService) : BaseApiController
 {
     [HttpPost("register")]
     public async Task<ActionResult<UserResponseDTO>> Register(RegisterDTO userDto)
@@ -46,9 +46,7 @@ public class AccountController(DataContext context, ITokenService tokenService) 
     [HttpPost("login")]
     public async Task<ActionResult<UserResponseDTO>> Login(LoginDTO login)
     {
-        var user = await context.Users.FirstOrDefaultAsync(x =>
-            x.UserName == login.Username.ToLower()
-        );
+        var user = await userRepository.GetAppUserByUsernameAsync(login.Username);
         if (user == null)
         {
             return Unauthorized("User Name not exists.");
@@ -65,14 +63,14 @@ public class AccountController(DataContext context, ITokenService tokenService) 
         }
 
         return Ok(
-            new UserResponseDTO { Username = user.UserName, Token = tokenService.CreateToken(user) }
+            new UserResponseDTO { Username = user.UserName, Token = tokenService.CreateToken(user), PhotoUrl = user.Photos.FirstOrDefault(x => x.IsMain == true)!.Url }
         );
     }
 
     [HttpPost("update")]
     public async Task<ActionResult<AppUser>> Update(UpdateLoginDTO login)
     {
-        var user = await context.Users.FirstOrDefaultAsync(x => x.UserName == login.Username);
+        var user = await userRepository.GetAppUserByUsernameAsync(login.Username);
         if (user == null)
         {
             return Unauthorized("User Name not exists.");
@@ -93,16 +91,18 @@ public class AccountController(DataContext context, ITokenService tokenService) 
         user.PasswordSalt = hmacUpdate.Key;
         user.PasswordHash = hmacUpdate.ComputeHash(Encoding.UTF8.GetBytes(login.UpdatePassword));
 
-        await context.SaveChangesAsync();
+        await userRepository.SaveAllAsync();
         return Ok(user);
     }
 
     private async Task<bool> UserExists(string username)
     {
-        return await context.Users.AnyAsync(x =>
-            !string.IsNullOrWhiteSpace(username)
-            && !string.IsNullOrEmpty(username)
-            && x.UserName.ToLower() == username.ToLower()
-        );
+        if(!string.IsNullOrWhiteSpace(username)
+            && !string.IsNullOrEmpty(username)){
+              var user =  await userRepository.GetAppUserByUsernameAsync(username);
+              if(user == null) return false;
+              if(user.UserName.Equals(username, StringComparison.CurrentCultureIgnoreCase)) return true;
+            }
+        return false;
     }
 }

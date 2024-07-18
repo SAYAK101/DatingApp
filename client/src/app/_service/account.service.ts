@@ -16,8 +16,7 @@ export class AccountService {
     return this.http.post<User>(this.baseurl + 'account/login', model).pipe(
       map(user => {
         if(user){
-          localStorage.setItem('user', JSON.stringify(user));
-          this.currentUser.set(user);
+          this.setCurrentUser(user);
         }
         return user;
       })
@@ -28,8 +27,7 @@ export class AccountService {
     return this.http.post<User>(this.baseurl + 'account/register', model).pipe(
       map(user => {
         if(user){
-          localStorage.setItem('user', JSON.stringify(user));
-          this.currentUser.set(user);
+          this.setCurrentUser(user);
         }
         return user;
       })
@@ -39,5 +37,10 @@ export class AccountService {
   logout(){
     localStorage.removeItem('user');
     this.currentUser.set(null);
+  }
+
+  setCurrentUser(user: User){
+    localStorage.setItem('user', JSON.stringify(user));
+    this.currentUser.set(user);
   }
 }
