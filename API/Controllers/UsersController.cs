@@ -1,4 +1,5 @@
-﻿using API.Contracts;
+﻿using System.Security.Claims;
+using API.Contracts;
 using API.DTOs;
 using API.Entities;
 using AutoMapper;
@@ -8,7 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace API.Controllers
 {
     [Authorize]
-    public class UsersController(IUserRepository userRepository) : BaseApiController
+    public class UsersController(IUserRepository userRepository, IMapper mapper) : BaseApiController
     {
         
         [HttpGet]
@@ -40,6 +41,27 @@ namespace API.Controllers
             }
 
             return member;
+        }
+
+        [HttpPut]
+        public async Task<ActionResult> UpdateUser(MemberUpdateDTO updateDto)
+        {
+
+            var username = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if(username == null){
+                return BadRequest("User not found.");
+            }
+
+            var member = await userRepository.GetAppUserByUsernameAsync(username);
+            if(member == null){
+                return BadRequest("User not found.");
+            }
+
+            mapper.Map(updateDto, member);
+
+            if(await userRepository.SaveAllAsync()) return NoContent();
+
+            return BadRequest("Failed to update user.");
         }
     }
 }
