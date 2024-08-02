@@ -9,6 +9,11 @@ namespace API.Data;
 
 public class UserRepository(DataContext context, IMapper mapper) : IUserRepository
 {
+    public void Add(AppUser user)
+    {
+        context.Add(user);
+    }
+
     public async Task<AppUser?> GetAppUserByIdAsync(int id)
     {
         return await context.Users.FindAsync(id); 

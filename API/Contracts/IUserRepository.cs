@@ -7,6 +7,8 @@ public interface IUserRepository
 {
     void Update(AppUser user);
 
+    void Add(AppUser user);
+
     Task<bool> SaveAllAsync();
 
     Task<IEnumerable<AppUser>> GetAppUsersAsync();

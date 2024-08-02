@@ -6,5 +6,7 @@ public class UserResponseDTO
 
     public required string Token { get; set; }
 
+    public required string KnownAs { get; set; }
+
     public string? PhotoUrl { get; set; }
 }

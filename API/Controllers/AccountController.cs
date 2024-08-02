@@ -1,46 +1,45 @@
 ﻿using System.Security.Cryptography;
 using System.Text;
 using API.Contracts;
-using API.Data;
 using API.DTOs;
 using API.Entities;
+using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace API.Controllers;
 
-public class AccountController(IUserRepository userRepository, ITokenService tokenService) : BaseApiController
+public class AccountController(IUserRepository userRepository, ITokenService tokenService, IMapper mapper) : BaseApiController
 {
     [HttpPost("register")]
     public async Task<ActionResult<UserResponseDTO>> Register(RegisterDTO userDto)
     {
-        if (userDto.username == null || userDto.username == "" || userDto.username == " ")
+        if (userDto.Username == null || userDto.Username == "" || userDto.Username == " ")
         {
             return BadRequest("Username is Empty.");
         }
 
-        var userExists = await UserExists(userDto.username);
+        var userExists = await UserExists(userDto.Username);
         if (userExists)
         {
             return BadRequest("Username is taken.");
         }
-        return Ok();
-        // using var hmac = new HMACSHA512();
-        // var user = new AppUser
-        // {
-        //     UserName = userDto.username.ToLower(),
-        //     PasswordHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(userDto.password)),
-        //     PasswordSalt = hmac.Key
-        // };
+    
+        using var hmac = new HMACSHA512();
 
-        // context.Users.Add(user);
-        // await context.SaveChangesAsync();
+        var user = mapper.Map<AppUser>(userDto);
+        user.PasswordHash =  hmac.ComputeHash(Encoding.UTF8.GetBytes(userDto.Password));
+        user.PasswordSalt = hmac.Key;
+        
 
-        // return Ok(new UserResponseDTO
-        // {
-        //     Username = user.UserName,
-        //     Token = tokenService.CreateToken(user)
-        // });
+        userRepository.Add(user);
+        await userRepository.SaveAllAsync();
+
+        return Ok(new UserResponseDTO
+        {
+            Username = user.UserName,
+            Token = tokenService.CreateToken(user),
+            KnownAs = user.KnownAs
+        });
     }
 
     [HttpPost("login")]
@@ -61,9 +60,9 @@ public class AccountController(IUserRepository userRepository, ITokenService tok
             if (computerHash[i] != user.PasswordHash[i])
                 return Unauthorized("Password Incorrect.");
         }
-
+        
         return Ok(
-            new UserResponseDTO { Username = user.UserName, Token = tokenService.CreateToken(user), PhotoUrl = user.Photos.FirstOrDefault(x => x.IsMain == true)!.Url }
+            new UserResponseDTO { Username = user.UserName, Token = tokenService.CreateToken(user), PhotoUrl = user.Photos.FirstOrDefault(x => x.IsMain == true)?.Url, KnownAs = user.KnownAs }
         );
     }
 

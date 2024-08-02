@@ -84,6 +84,8 @@ namespace API.Controllers
                 PublicId = result.PublicId
             };
 
+            if(member.Photos.Count == 0) photo.IsMain = true;
+
             member.Photos.Add(photo);
 
             if (await userRepository.SaveAllAsync())
